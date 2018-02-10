@@ -575,31 +575,144 @@ class Particle {
     return steer;
   }
 
+/*
+* FUNCTION USED TO FLOW FIELD EXAMPLES
+
+*/
+PVector follow(FlowField flow){
+    PVector desired = flow.lookup(position);
+    desired.mult(maxspeed);    
+    PVector steer = PVector.sub(desired, velocity);
+    steer.limit(maxforce);
+    return steer;
+
+  }
+}
 
 
+class FlowField {
+
+  PVector[][] field;
+  int cols, rows;
+  int resolution;
+  float pace = 0;
+  float vel_noise=0.01;
+
+  FlowField() {
+
+    resolution = 10;
+    cols = width / resolution;
+    rows = height / resolution;
+    field = new PVector[cols][rows];
+  }
+
+  void generate() { 
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        field[i][j] = new PVector(1, 0);
+      }
+    }
+  }
+
+  void display_field() {
+    int r = resolution / 2;
+    noFill();
 
 
-  //void test_01(){
-  //  PVector seek_force = seek(new PVector(mouseX,mouseY), true);
-  //  PVector wander_force = wander();
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        float x = r* field[i][j].x;
+        float y = r *field[0][0].y;
 
-  //   if (seek_force.mag() > 0){
-  //     wander_force.mult(0);
-  //   }
+        int pos_x = i*resolution;
+        int pos_y = j*resolution;
+        float d = dist(pos_x, pos_y, pos_x+x, pos_y+y);
 
-  //   apply_force(wander_force);
-  //   apply_force(seek_force);
-  //}
+        color to = color(255, 255, 255);
+        color from = color(255, 90, 255);
 
-  //void test_01(){
-  //  PVector flee_force = flee(new PVector(mouseX,mouseY), true);
-  //  PVector wander_force = wander();
+        color col = lerpColor(from, to, d/(r*sqrt(2)));
+        stroke(col);
+        line(pos_x, pos_y, pos_x+x, pos_y+y);
+      }
+    }
+  }
 
-  //   if (flee_force.mag() > 0){
-  //     wander_force.mult(0);
-  //   }
+  void display_grid() {
 
-  //   apply_force(wander_force);
-  //   apply_force(flee_force);
-  //}
+    for (int i = 0; i < cols; i++) {
+      int xoff = i * resolution;
+      for (int j = 0; j < rows; j++) {
+        int yoff = j * resolution;
+
+        noFill();
+        stroke(255);
+        rect(xoff, yoff, xoff+resolution, yoff+resolution);
+      }
+    }
+  }
+
+  PVector lookup(PVector l) {
+    int column = int(constrain(l.x/resolution, 0, cols-1)); 
+    int row = int(constrain(l.y/resolution, 0, rows-1)); 
+    return field[column][row].copy();
+  }
+}
+
+class FlowFieldPerlinNoise extends FlowField {
+  float pace = 0;
+  float vel_noise=0.01;
+
+  void generate() { 
+    float xoff = pace;
+    for (int i = 0; i < cols; i++) {
+      float yoff = pace;
+      for (int j = 0; j < rows; j++) {
+        float theta = map(noise(xoff, yoff), 0, 1, 0, TWO_PI);
+        field[i][j] = new PVector(cos(theta), sin(theta)); 
+        yoff += 0.1;
+      }
+      xoff += 0.1;
+    }
+    pace += vel_noise;
+  }
+}
+
+class FlowFieldCenter extends FlowField {
+
+  void generate() {
+
+    PVector to = new PVector(width/2, height/2);
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        PVector from = new PVector(i*resolution, j*resolution);
+
+        field[i][j] = PVector.sub(to, from);
+        field[i][j].setMag(resolution*0.09);
+      }
+    }
+  }
+}
+
+class FlowFieldRandom extends FlowField {
+  
+  void generate() {
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        field[i][j] = PVector.random2D();
+      }
+    }
+  }
+}
+
+class FlowFieldSineWave extends FlowField {
+  
+  void generate() {
+    for (int i = 0; i < cols; i++) {
+      float angle = map(i*resolution,0,width,0,TWO_PI*3);
+      for (int j = 0; j < rows; j++) {
+        field[i][j] = new PVector(4,sin(angle)*10);
+      }
+    }
+  }
 }
